@@ -1,0 +1,15 @@
+# Dependencias
+node_modules/
+
+# Archivos comprimidos
+*.zip
+
+
+# Variables de entorno (Seguridad)
+.env
+.env.local
+.env.*.local
+
+# Logs y archivos de sistema
+*.log
+.DS_Store
