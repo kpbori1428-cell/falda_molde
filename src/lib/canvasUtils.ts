@@ -96,7 +96,19 @@ export const drawSingleLayer = (
 
   ctx.globalAlpha = layer.opacity / 100;
 
-  if (layer.placementType === 'radial') {
+  if (layer.placementType === 'manual') {
+    const x = cx + layer.posX * currentPxPerCm;
+    const y = cy + layer.posY * currentPxPerCm;
+    const manualScale = layer.manualScale || 1;
+    const manualRot = layer.manualRotation || 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(manualRot * Math.PI / 180);
+    ctx.scale(scale * manualScale, scaleY * manualScale);
+    ctx.drawImage(layer.imageObj, -imgW / 2, -imgH / 2);
+    ctx.restore();
+  } else if (layer.placementType === 'radial') {
     const startOffset = innerRadiusPx + offsetPx;
     
     for (let r = 0; r < safeRaysCount; r++) {

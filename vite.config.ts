@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import * as nodePath from 'path';
 import fs from 'fs';
 import { defineConfig, loadEnv, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -33,7 +33,7 @@ export default defineConfig(({mode}) => {
                     // Inyectar rastreador de entrada y envolver en try/catch para capturar fallos
                     if (path.node.body.type === 'BlockStatement') {
                       const funcNameLiteral = t.stringLiteral(funcName);
-                      const fileNameLiteral = t.stringLiteral(path.basename(filename));
+                      const fileNameLiteral = t.stringLiteral(nodePath.basename(filename));
 
                       // Código a inyectar al inicio: window.__TRAZA_GLOBAL__.log(name, file, 'ENTRADA')
                       const logEntry = t.expressionStatement(
@@ -85,7 +85,7 @@ export default defineConfig(({mode}) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': nodePath.resolve(__dirname, '.'),
       },
     },
     server: {

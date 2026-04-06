@@ -96,24 +96,50 @@ export function useExporter({
       drawGuides(gCtx, safeDpi, width, height, innerRadiusCm, outerRadiusCm, showFabricLimits, safeFabricWidth);
       psdChildren.push({ name: 'Guias_Falda', canvas: guidesCanvas });
 
-      for (let i = layers.length - 1; i >= 0; i--) {
-        const layer = layers[i];
-        if (!layer.imageObj) continue;
+      const buildHierarchy = (parentId: string | null): any[] => {
+        const children: any[] = [];
+        const filteredLayers = layers.filter(l => l.parentId === parentId);
         
-        const layerCanvas = document.createElement('canvas');
-        layerCanvas.width = width; layerCanvas.height = height;
-        const lCtx = layerCanvas.getContext('2d')!;
+        // Reverse because ag-psd expects bottom layers first in the array?
+        // Actually the current loop was i = layers.length - 1 down to 0 and push, which means top layer first in psdChildren.
+        // ag-psd documentation says first child is at top. Let's check the loop:
+        // for (let i = layers.length - 1; i >= 0; i--) { psdChildren.push(...) }
+        // If layers[0] is the bottom-most layer in our array (drawn last in render loop?),
+        // and renderPattern draws from layers.length - 1 to 0 (top first?).
+        // WAIT: renderPattern: for (let i = layers.length - 1; i >= 0; i--) { drawSingleLayer(layers[i]) }
+        // This draws layers[layers.length - 1] first, then layers[layers.length - 2], etc.
+        // So layers[0] is the TOP-MOST layer (drawn last).
         
-        const exportLayer = { ...layer, opacity: 100, visible: true };
-        drawSingleLayer(lCtx, exportLayer, safeDpi, width, height, innerRadiusCm, outerRadiusCm);
-        
-        psdChildren.push({
-          name: layer.name,
-          canvas: layerCanvas,
-          opacity: layer.opacity / 100,
-          hidden: !layer.visible
-        });
-      }
+        for (const layer of filteredLayers) {
+          if (layer.type === 'group') {
+            children.push({
+              name: layer.name,
+              opened: layer.isExpanded,
+              hidden: !layer.visible,
+              opacity: layer.opacity / 100,
+              children: buildHierarchy(layer.id)
+            });
+          } else {
+            if (!layer.imageObj) continue;
+            const layerCanvas = document.createElement('canvas');
+            layerCanvas.width = width; layerCanvas.height = height;
+            const lCtx = layerCanvas.getContext('2d')!;
+
+            const exportLayer = { ...layer, opacity: 100, visible: true };
+            drawSingleLayer(lCtx, exportLayer, safeDpi, width, height, innerRadiusCm, outerRadiusCm);
+
+            children.push({
+              name: layer.name,
+              canvas: layerCanvas,
+              opacity: layer.opacity / 100,
+              hidden: !layer.visible
+            });
+          }
+        }
+        return children;
+      };
+
+      psdChildren.push(...buildHierarchy(null));
 
       const psd = {
         width,

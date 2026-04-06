@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet, ChevronDown, ChevronRight, FolderPlus, Group, ArrowLeft, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { PatternLayer, PlacementType } from '../lib/types';
 import { CollapsibleSection, ControlInput } from './UI';
 
@@ -15,15 +15,21 @@ interface SidebarProps {
   setFabricWidthCm: (value: number | '') => void;
   layers: PatternLayer[];
   addLayer: () => void;
+  addGroup: () => void;
+  groupSelectedLayers: () => void;
+  selectedLayerIds: string[];
+  handleLayerClick: (id: string, ctrlKey: boolean, shiftKey: boolean) => void;
   activeLayerId: string | null;
-  setActiveLayerId: (id: string | null) => void;
   updateLayer: (id: string, updates: Partial<PatternLayer>) => void;
   moveLayerUp: (index: number) => void;
   moveLayerDown: (index: number) => void;
+  moveLayersToGroup: (ids: string[], targetGroupId: string | null) => void;
+  ungroup: (groupId: string) => void;
   duplicateLayer: (id: string) => void;
   deleteLayer: (id: string) => void;
   activeLayer: PatternLayer | undefined;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, layerId: string) => void;
+  handleWorkImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   startSegmenting: (layerId: string) => void;
   startRemovingBg: (layerId: string) => void;
   bgColor: string;
@@ -38,11 +44,33 @@ interface SidebarProps {
 
 export default function Sidebar({
   waistCircumferenceCm, setWaistCircumferenceCm, skirtLengthCm, setSkirtLengthCm, hemCircumferenceCm,
-  showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer,
-  activeLayerId, setActiveLayerId, updateLayer, moveLayerUp, moveLayerDown, duplicateLayer, deleteLayer,
-  activeLayer, handleImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
+  showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer, addGroup, groupSelectedLayers,
+  selectedLayerIds, handleLayerClick, activeLayerId, updateLayer, moveLayerUp, moveLayerDown, moveLayersToGroup, ungroup, duplicateLayer, deleteLayer,
+  activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
   isDownloading, isExportingPsd, exportForPhotoshop
 }: SidebarProps) {
+  const getLayerDepth = (layer: PatternLayer): number => {
+    let depth = 0;
+    let current = layer;
+    while (current.parentId) {
+      const parent = layers.find(l => l.id === current.parentId);
+      if (!parent) break;
+      depth++;
+      current = parent;
+    }
+    return depth;
+  };
+
+  const isLayerVisibleInTree = (layer: PatternLayer): boolean => {
+    let current = layer;
+    while (current.parentId) {
+      const parent = layers.find(l => l.id === current.parentId);
+      if (!parent || !parent.isExpanded) return false;
+      current = parent;
+    }
+    return true;
+  };
+
   return (
     <div className="w-full md:w-96 bg-neutral-900 border-r border-neutral-800 flex flex-col h-screen shrink-0 shadow-sm z-10">
       
@@ -85,68 +113,158 @@ export default function Sidebar({
           icon={<Layers size={14} />} 
           defaultOpen={true}
           action={
-            <button 
-              onClick={addLayer}
-              className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-neutral-700"
-            >
-              <Plus size={12} /> Nueva
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={addLayer}
+                className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-neutral-700"
+                title="Nueva Capa"
+              >
+                <Plus size={10} /> Capa
+              </button>
+              <button
+                onClick={addGroup}
+                className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-neutral-700"
+                title="Nuevo Grupo"
+              >
+                <FolderPlus size={10} /> Grupo
+              </button>
+              <button
+                onClick={groupSelectedLayers}
+                disabled={selectedLayerIds.length === 0}
+                className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-neutral-700 disabled:opacity-30"
+                title="Agrupar Selección"
+              >
+                <Group size={10} /> Agrupar
+              </button>
+              <label className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-sm">
+                <ImagePlus size={10} /> Trabajo
+                <input type="file" className="hidden" accept="image/png, image/jpeg, .psd" onChange={handleWorkImageUpload} />
+              </label>
+            </div>
           }
         >
-          <div className="flex flex-col gap-2">
-            {layers.map((layer, index) => (
-              <div 
-                key={layer.id} 
-                onClick={() => setActiveLayerId(layer.id)}
-                className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${activeLayerId === layer.id ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_10px_rgba(59,130,246,0.1)]' : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-600'} ${!layer.visible ? 'opacity-50' : ''}`}
-              >
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }}
-                    className="p-1 text-neutral-400 hover:text-white transition-colors"
-                  >
-                    {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
-                  </button>
-                  <div className="w-8 h-8 bg-neutral-900 rounded flex items-center justify-center border border-neutral-800 overflow-hidden shrink-0">
-                    {layer.imageSrc ? (
-                      <img src={layer.imageSrc} alt="thumbnail" className="w-full h-full object-contain p-1" />
-                    ) : (
-                      <ImageIcon size={14} className="text-neutral-600" />
+          <div className="flex flex-col gap-1">
+            {layers.map((layer, index) => {
+              if (!isLayerVisibleInTree(layer)) return null;
+              const depth = getLayerDepth(layer);
+              const isSelected = selectedLayerIds.includes(layer.id);
+              const isActive = activeLayerId === layer.id;
+
+              return (
+                <div
+                  key={layer.id}
+                  onClick={(e) => handleLayerClick(layer.id, e.ctrlKey || e.metaKey, e.shiftKey)}
+                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_10px_rgba(59,130,246,0.1)]' : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-600'} ${!layer.visible ? 'opacity-50' : ''}`}
+                  style={{ marginLeft: `${depth * 12}px` }}
+                >
+                  <div className="flex items-center gap-1.5 overflow-hidden">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors shrink-0"
+                      title={layer.visible ? "Ocultar" : "Mostrar"}
+                    >
+                      {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+
+                    {layer.placementType === 'manual' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }); }}
+                        className={`p-1 transition-colors shrink-0 ${layer.locked ? 'text-amber-500' : 'text-neutral-500 hover:text-white'}`}
+                        title={layer.locked ? "Desbloquear posición" : "Bloquear posición"}
+                      >
+                        {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                      </button>
                     )}
+
+                    {layer.type === 'group' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { isExpanded: !layer.isExpanded }); }}
+                        className="p-0.5 text-neutral-500 hover:text-white shrink-0"
+                      >
+                        {layer.isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    )}
+
+                    <div className="w-7 h-7 bg-neutral-900 rounded flex items-center justify-center border border-neutral-800 overflow-hidden shrink-0">
+                      {layer.type === 'group' ? (
+                        <Layers size={12} className="text-blue-500" />
+                      ) : layer.imageSrc ? (
+                        <img src={layer.imageSrc} alt="thumbnail" className="w-full h-full object-contain p-0.5" />
+                      ) : (
+                        <ImageIcon size={12} className="text-neutral-600" />
+                      )}
+                    </div>
+
+                    <div className="flex flex-col min-w-0">
+                      <input
+                        type="text"
+                        value={layer.name}
+                        onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs font-medium text-neutral-200 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -ml-1 truncate"
+                      />
+                      {layer.type === 'layer' && (
+                        <span className="text-[8px] text-neutral-500 uppercase tracking-wider truncate">{layer.placementType}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col w-24">
-                    <input 
-                      type="text" 
-                      value={layer.name} 
-                      onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-sm font-medium text-neutral-200 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -ml-1"
-                    />
-                    <span className="text-[10px] text-neutral-500 uppercase tracking-wider">{layer.placementType}</span>
+
+                  <div className="flex items-center gap-0.5 shrink-0 ml-2">
+                    <div className="flex flex-col">
+                      <button onClick={(e) => { e.stopPropagation(); moveLayerUp(index); }} disabled={index === 0} className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20"><ArrowUp size={10}/></button>
+                      <button onClick={(e) => { e.stopPropagation(); moveLayerDown(index); }} disabled={index === layers.length - 1} className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20"><ArrowDown size={10}/></button>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); moveLayersToGroup([layer.id], null); }}
+                        disabled={!layer.parentId}
+                        className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20"
+                        title="Extraer de grupo"
+                      >
+                        <ArrowLeft size={10}/>
+                      </button>
+                      {index > 0 && layers[index-1].type === 'group' && (
+                         <button
+                          onClick={(e) => { e.stopPropagation(); moveLayersToGroup([layer.id], layers[index-1].id); }}
+                          disabled={layer.parentId === layers[index-1].id}
+                          className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20"
+                          title="Mover a grupo superior"
+                        >
+                          <ArrowRight size={10}/>
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }}
+                      className="p-1 text-neutral-500 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors"
+                      title="Duplicar"
+                    >
+                      <Copy size={12} />
+                    </button>
+
+                    {layer.type === 'group' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); ungroup(layer.id); }}
+                        className="p-1 text-neutral-500 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors"
+                        title="Desagrupar"
+                      >
+                        <Layers size={12} />
+                      </button>
+                    )}
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
+                      className="p-1 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="flex flex-col">
-                    <button onClick={(e) => { e.stopPropagation(); moveLayerUp(index); }} disabled={index === 0} className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-30"><ArrowUp size={12}/></button>
-                    <button onClick={(e) => { e.stopPropagation(); moveLayerDown(index); }} disabled={index === layers.length - 1} className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-30"><ArrowDown size={12}/></button>
-                  </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }}
-                    className="p-1.5 text-neutral-500 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors"
-                    title="Duplicar capa"
-                  >
-                    <Copy size={14} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
-                    className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                    title="Eliminar capa"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {layers.length === 0 && (
               <div className="text-center p-4 text-sm text-neutral-500 border border-dashed border-neutral-800 rounded-lg">
                 No hay capas. Agrega una para comenzar.
@@ -171,15 +289,17 @@ export default function Sidebar({
                   )}
                   <div className="flex flex-col">
                     <span className="text-sm text-neutral-300 font-medium">{activeLayer.imageSrc ? 'Cambiar Imagen' : 'Subir PNG/PSD'}</span>
-                    <span className="text-xs text-neutral-500">Extrae todas las capas</span>
+                    <span className="text-xs text-neutral-500">{activeLayer.type === 'group' ? 'Solo para capas individuales' : 'Extrae todas las capas'}</span>
                   </div>
                 </div>
-                <input type="file" className="hidden" accept="image/png, image/jpeg, .psd, application/x-photoshop, image/vnd.adobe.photoshop" onChange={(e) => handleImageUpload(e, activeLayer.id)} />
+                {activeLayer.type === 'layer' && (
+                  <input type="file" className="hidden" accept="image/png, image/jpeg, .psd, application/x-photoshop, image/vnd.adobe.photoshop" onChange={(e) => handleImageUpload(e, activeLayer.id)} />
+                )}
               </label>
             </CollapsibleSection>
             
             {/* Editing Section */}
-            {activeLayer.imageSrc && (
+            {activeLayer.type === 'layer' && activeLayer.imageSrc && (
               <CollapsibleSection title="Edición de Imagen" icon={<Scissors size={14} />} defaultOpen={true} accentColor="text-amber-400">
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -215,8 +335,22 @@ export default function Sidebar({
                     <option value="hem">Contorno desde el Ruedo</option>
                     <option value="radial">Radial (Rayos desde el centro)</option>
                     <option value="arc">Arco (Curvar sobre circunferencia)</option>
+                    <option value="manual">Manual (Capa de Trabajo)</option>
                   </select>
                 </div>
+
+                {activeLayer.placementType === 'manual' && (
+                  <div className="flex flex-col gap-3 pt-3 border-t border-neutral-800/50">
+                    <div className="grid grid-cols-2 gap-3">
+                      <ControlInput label="Posición X" value={activeLayer.posX} setValue={(v: number) => updateLayer(activeLayer.id, { posX: v })} min={-200} max={200} unit="cm" />
+                      <ControlInput label="Posición Y" value={activeLayer.posY} setValue={(v: number) => updateLayer(activeLayer.id, { posY: v })} min={-200} max={200} unit="cm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <ControlInput label="Escala Manual" value={activeLayer.manualScale} setValue={(v: number) => updateLayer(activeLayer.id, { manualScale: v })} min={0.01} max={10} step={0.01} unit="x" />
+                      <ControlInput label="Rotación Manual" value={activeLayer.manualRotation} setValue={(v: number) => updateLayer(activeLayer.id, { manualRotation: v })} min={-360} max={360} unit="°" />
+                    </div>
+                  </div>
+                )}
 
                 {(activeLayer.placementType === 'waist' || activeLayer.placementType === 'hem' || activeLayer.placementType === 'radial' || activeLayer.placementType === 'arc') && (
                   <ControlInput
@@ -337,6 +471,7 @@ export default function Sidebar({
             </CollapsibleSection>
 
             {/* Variation Section */}
+            {activeLayer.placementType !== 'manual' && (
             <CollapsibleSection title="Variaciones de Repetición" icon={<Copy size={14} />} defaultOpen={false} accentColor="text-blue-400">
               <div className="flex flex-col gap-3 bg-neutral-950/50 p-4 rounded-xl border border-neutral-800">
                 <ControlInput label="Rotación Alterna" value={activeLayer.alternateRotation} setValue={(v: number) => updateLayer(activeLayer.id, { alternateRotation: v })} min={0} max={360} unit="°" />
@@ -360,6 +495,7 @@ export default function Sidebar({
                 </div>
               </div>
             </CollapsibleSection>
+            )}
           </>
         )}
       </div>

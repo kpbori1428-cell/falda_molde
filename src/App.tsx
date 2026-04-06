@@ -8,12 +8,14 @@ import { useViewport } from './hooks/useViewport';
 import { useImageEditor } from './hooks/useImageEditor';
 import { useSkirtSettings } from './hooks/useSkirtSettings';
 import { useExporter } from './hooks/useExporter';
+import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { drawGuides, drawSingleLayer } from './lib/canvasUtils';
 
 export default function App() {
   const {
-    layers, setLayers, activeLayerId, setActiveLayerId, activeLayer, addLayer, updateLayer,
-    deleteLayer, duplicateLayer, moveLayerUp, moveLayerDown, handleImageUpload
+    layers, setLayers, selectedLayerIds, setSelectedLayerIds, handleLayerClick, activeLayerId, activeLayer,
+    addLayer, addGroup, groupSelectedLayers, updateLayer, moveLayersToGroup, ungroup,
+    deleteLayer, duplicateLayer, moveLayerUp, moveLayerDown, handleImageUpload, handleWorkImageUpload
   } = useLayers();
   
   const {
@@ -22,6 +24,25 @@ export default function App() {
     handlePointerDown, handlePointerMove, handlePointerUp, resetView, zoomInView, zoomOutView,
     boxW, boxH, boxLeft, boxTop
   } = useViewport();
+
+  // Preview resolution
+  const PREVIEW_DPI = 40;
+
+  const {
+    handleCanvasPointerDown,
+    handleCanvasPointerMove,
+    handleCanvasPointerUp,
+    isDraggingLayer
+  } = useCanvasInteraction({
+    layers,
+    updateLayer,
+    selectedLayerIds,
+    handleLayerClick,
+    scale,
+    pan,
+    containerSize,
+    previewDpi: PREVIEW_DPI
+  });
 
   const {
     segmentLayer, segmentSelections, startSegmenting, handleSegmentClick,
@@ -36,8 +57,6 @@ export default function App() {
     innerRadiusCm, outerRadiusCm, hemCircumferenceCm, canvasSizeCm, safeFabricWidth
   } = useSkirtSettings();
 
-  // Preview resolution
-  const PREVIEW_DPI = 40;
   const previewPxPerCm = PREVIEW_DPI / 2.54;
   const previewCanvasWidth = Math.round(canvasSizeCm * previewPxPerCm);
   const previewCanvasHeight = Math.round(canvasSizeCm * previewPxPerCm);
@@ -55,8 +74,23 @@ export default function App() {
 
     drawGuides(ctx, targetDpi, canvas.width, canvas.height, innerRadiusCm, outerRadiusCm, showFabricLimits, safeFabricWidth);
 
+    const isLayerVisible = (layer: any): boolean => {
+      if (!layer.visible) return false;
+      let current = layer;
+      while (current.parentId) {
+        const parent = layers.find(l => l.id === current.parentId);
+        if (!parent) break;
+        if (!parent.visible) return false;
+        current = parent;
+      }
+      return true;
+    };
+
     for (let i = layers.length - 1; i >= 0; i--) {
-      drawSingleLayer(ctx, layers[i], targetDpi, canvas.width, canvas.height, innerRadiusCm, outerRadiusCm);
+      const layer = layers[i];
+      if (layer.type === 'layer' && isLayerVisible(layer)) {
+        drawSingleLayer(ctx, layer, targetDpi, canvas.width, canvas.height, innerRadiusCm, outerRadiusCm);
+      }
     }
   }, [layers, bgColor, innerRadiusCm, outerRadiusCm, showFabricLimits, safeFabricWidth]);
   
@@ -90,15 +124,21 @@ export default function App() {
         setFabricWidthCm={setFabricWidthCm}
         layers={layers}
         addLayer={addLayer}
+        addGroup={addGroup}
+        groupSelectedLayers={groupSelectedLayers}
+        selectedLayerIds={selectedLayerIds}
+        handleLayerClick={handleLayerClick}
         activeLayerId={activeLayerId}
-        setActiveLayerId={setActiveLayerId}
         updateLayer={updateLayer}
         moveLayerUp={moveLayerUp}
         moveLayerDown={moveLayerDown}
+        moveLayersToGroup={moveLayersToGroup}
+        ungroup={ungroup}
         duplicateLayer={duplicateLayer}
         deleteLayer={deleteLayer}
         activeLayer={activeLayer}
         handleImageUpload={handleImageUpload}
+        handleWorkImageUpload={handleWorkImageUpload}
         startSegmenting={startSegmenting}
         startRemovingBg={startRemovingBg}
         bgColor={bgColor}
@@ -113,10 +153,19 @@ export default function App() {
 
       <CanvasArea
         containerRef={containerRef}
-        isDragging={isDragging}
-        handlePointerDown={handlePointerDown}
-        handlePointerMove={handlePointerMove}
-        handlePointerUp={handlePointerUp}
+        isDragging={isDragging || isDraggingLayer}
+        handlePointerDown={(e) => {
+            handleCanvasPointerDown(e);
+            if (!e.defaultPrevented) handlePointerDown(e);
+        }}
+        handlePointerMove={(e) => {
+            handleCanvasPointerMove(e);
+            handlePointerMove(e);
+        }}
+        handlePointerUp={(e) => {
+            handleCanvasPointerUp();
+            handlePointerUp(e);
+        }}
         containerSize={containerSize}
         pan={pan}
         scale={scale}
