@@ -4,7 +4,6 @@ import CanvasArea from './components/CanvasArea';
 import SegmentationModal from './components/SegmentationModal';
 import RemoveBgModal from './components/RemoveBgModal';
 import CompositionModal from './components/CompositionModal';
-import LassoModal from './components/LassoModal';
 import { useLayers } from './hooks/useLayers';
 import { useViewport } from './hooks/useViewport';
 import { useImageEditor } from './hooks/useImageEditor';
@@ -52,7 +51,7 @@ export default function App() {
     segmentLayer, segmentSelections, startSegmenting, handleSegmentClick,
     confirmSegmentation, setSegmentLayerId, setSegmentSelections,
     removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId,
-    lassoLayer, startLasso, confirmLasso, setLassoLayerId
+    autoCutout
   } = useImageEditor(layers, setLayers);
 
   const {
@@ -152,7 +151,7 @@ export default function App() {
         handleWorkImageUpload={handleWorkImageUpload}
         startSegmenting={startSegmenting}
         startRemovingBg={startRemovingBg}
-        startLasso={startLasso}
+        autoCutout={autoCutout}
         bgColor={bgColor}
         setBgColor={setBgColor}
         dpi={dpi}
@@ -235,13 +234,6 @@ export default function App() {
         />
       )}
 
-      {lassoLayer && (
-        <LassoModal
-          layer={lassoLayer}
-          onConfirm={confirmLasso}
-          onClose={() => setLassoLayerId(null)}
-        />
-      )}
     </div>
   );
 }
