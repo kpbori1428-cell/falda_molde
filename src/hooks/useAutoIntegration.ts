@@ -5,7 +5,7 @@ import { analyzeBackground, adjustBlackPoint, applyLightWrap, applyBlur, applyGr
 interface IntegrationParams {
   layers: PatternLayer[];
   updateLayer: (id: string, updates: Partial<PatternLayer>) => void;
-  renderPattern: (canvas: HTMLCanvasElement, targetDpi: number) => void;
+  renderPattern: (canvas: HTMLCanvasElement, targetDpi: number, excludeLayerId?: string) => void;
 }
 
 export function useAutoIntegration({ layers, updateLayer, renderPattern }: IntegrationParams) {
@@ -14,10 +14,6 @@ export function useAutoIntegration({ layers, updateLayer, renderPattern }: Integ
     const layer = layers.find(l => l.id === layerId);
     if (!layer || !layer.imageObj || layer.type !== 'layer') return;
 
-    // 1. Create a background snapshot excluding the target layer
-    const tempCanvas = document.createElement('canvas');
-    const layerIdx = layers.findIndex(l => l.id === layerId);
-
     // We need the background specifically where the layer is positioned.
     // For pattern layers this is complex, let's focus on 'manual' layers first as they are the primary 'flor' target.
     if (layer.placementType !== 'manual') {
@@ -25,27 +21,22 @@ export function useAutoIntegration({ layers, updateLayer, renderPattern }: Integ
         return;
     }
 
-    // Capture the full canvas at PREVIEW_DPI to analyze the background
-    // To get ONLY the background, we temporarily hide the target layer
-    const originalVisible = layer.visible;
-    updateLayer(layerId, { visible: false });
-
-    // Wait for the next frame/render to ensure the canvas is updated if it were using a real DOM canvas
-    // But since renderPattern is a pure function taking a canvas, we can just call it.
     const PREVIEW_DPI = 40;
-    const canvasSize = 2000; // Large enough for analysis
+    const pxPerCm = PREVIEW_DPI / 2.54;
+
+    // 1. Create a background snapshot excluding the target layer
+    const tempCanvas = document.createElement('canvas');
+    // Using a large enough size or matching preview size.
+    // In App.tsx canvasSizeCm is used. We can estimate it or just use a fixed large buffer.
+    const canvasSize = 3000;
     tempCanvas.width = canvasSize;
     tempCanvas.height = canvasSize;
 
-    renderPattern(tempCanvas, PREVIEW_DPI);
+    // We use the new excludeLayerId parameter to get the background ONLY
+    renderPattern(tempCanvas, PREVIEW_DPI, layerId);
     const bgCtx = tempCanvas.getContext('2d')!;
 
-    // Restore visibility
-    updateLayer(layerId, { visible: originalVisible });
-
     // 2. Sample the specific area behind the layer
-    // Map manual coordinates to pixel coordinates on tempCanvas
-    const pxPerCm = PREVIEW_DPI / 2.54;
     const cx = tempCanvas.width / 2;
     const cy = tempCanvas.height / 2;
 
@@ -57,14 +48,40 @@ export function useAutoIntegration({ layers, updateLayer, renderPattern }: Integ
     const layerPxX = cx + layer.posX * pxPerCm - renderW / 2;
     const layerPxY = cy + layer.posY * pxPerCm - renderH / 2;
 
-    const bgImageData = bgCtx.getImageData(
-      Math.max(0, layerPxX - 20),
-      Math.max(0, layerPxY - 20),
-      renderW + 40,
-      renderH + 40
-    );
+    // Padding for analysis
+    const padding = 40;
+    const sampleX = Math.max(0, layerPxX - padding);
+    const sampleY = Math.max(0, layerPxY - padding);
+    const sampleW = Math.min(tempCanvas.width - sampleX, renderW + padding * 2);
+    const sampleH = Math.min(tempCanvas.height - sampleY, renderH + padding * 2);
+
+    const bgImageData = bgCtx.getImageData(sampleX, sampleY, sampleW, sampleH);
 
     // 3. Process the layer image
+    // To analyze background based on layer position, we need a mask in bgImageData space.
+    const analysisCanvas = document.createElement('canvas');
+    analysisCanvas.width = sampleW;
+    analysisCanvas.height = sampleH;
+    const analysisCtx = analysisCanvas.getContext('2d')!;
+
+    // Draw the layer into the analysis space to create the mask
+    analysisCtx.save();
+    analysisCtx.translate(layerPxX - sampleX + renderW / 2, layerPxY - sampleY + renderH / 2);
+    analysisCtx.rotate((layer.manualRotation || 0) * Math.PI / 180);
+    analysisCtx.scale(layer.flipVertical ? -1 : 1, 1);
+    analysisCtx.drawImage(layer.imageObj, -renderW / 2, -renderH / 2, renderW, renderH);
+    analysisCtx.restore();
+
+    const analysisImageData = analysisCtx.getImageData(0, 0, sampleW, sampleH);
+    const bgMask: boolean[] = [];
+    for (let i = 0; i < analysisImageData.data.length; i += 4) {
+      bgMask.push(analysisImageData.data[i+3] > 10); // Any non-transparent pixel is part of the "foreground" mask
+    }
+
+    // 4. Analysis and Execution
+    const stats = analyzeBackground(bgImageData, bgMask, 15);
+
+    // Now prepare the actual layer image for modification
     const layerCanvas = document.createElement('canvas');
     layerCanvas.width = imgW;
     layerCanvas.height = imgH;
@@ -72,19 +89,8 @@ export function useAutoIntegration({ layers, updateLayer, renderPattern }: Integ
     layerCtx.drawImage(layer.imageObj, 0, 0);
     const layerImageData = layerCtx.getImageData(0, 0, imgW, imgH);
 
-    // Generate mask from alpha
-    const mask: boolean[] = [];
-    for (let i = 0; i < layerImageData.data.length; i += 4) {
-      mask.push(layerImageData.data[i+3] > 128);
-    }
-
-    // 4. Analysis and Execution
-    // Note: Analysis on bgImageData requires transforming mask to bgImageData space or vice versa.
-    // For simplicity in this v1, we sample the average color and min luminance of the bg snippet.
-    const stats = analyzeBackground(bgImageData, new Array(bgImageData.width * bgImageData.height).fill(false), 10);
-
     adjustBlackPoint(layerImageData, stats.minLuminance);
-    applyLightWrap(layerImageData, stats.avgColor, 0.4, 5);
+    applyLightWrap(layerImageData, stats.avgColor, 0.4, 8);
 
     // Match Sharpness (if background is blurry, blur the flower)
     if (stats.sharpness < 0.6) {

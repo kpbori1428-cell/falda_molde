@@ -377,6 +377,33 @@ export function useLayers() {
     e.target.value = '';
   };
 
+  const convertToSmartObject = (ids: string[], mergedSrc: string, mergedImg: HTMLImageElement) => {
+    if (ids.length === 0) return;
+
+    const newSmartLayer: PatternLayer = {
+      ...createDefaultLayer(1),
+      id: `smart-${Date.now()}`,
+      name: "Smart Object",
+      imageSrc: mergedSrc,
+      imageObj: mergedImg,
+      isSmartObject: true,
+      placementType: 'manual',
+      posX: 0,
+      posY: 0,
+      manualScale: 1
+    };
+
+    // Find the insertion point (index of the first selected layer)
+    const insertionIdx = layers.findIndex(l => ids.includes(l.id));
+
+    // Filter out the original layers
+    const remaining = layers.filter(l => !ids.includes(l.id));
+    remaining.splice(insertionIdx, 0, newSmartLayer);
+
+    setLayers(remaining);
+    setSelectedLayerIds([newSmartLayer.id]);
+  };
+
   const activeLayerId = selectedLayerIds.length > 0 ? selectedLayerIds[selectedLayerIds.length - 1] : null;
   const activeLayer = layers.find(l => l.id === activeLayerId);
 
@@ -398,6 +425,7 @@ export function useLayers() {
     duplicateLayer,
     moveLayerUp,
     moveLayerDown,
+    convertToSmartObject,
     handleImageUpload,
     handleWorkImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, null, true)
   };

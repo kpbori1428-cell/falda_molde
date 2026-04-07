@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import CanvasArea from './components/CanvasArea';
 import SegmentationModal from './components/SegmentationModal';
 import RemoveBgModal from './components/RemoveBgModal';
+import CompositionModal from './components/CompositionModal';
 import { useLayers } from './hooks/useLayers';
 import { useViewport } from './hooks/useViewport';
 import { useImageEditor } from './hooks/useImageEditor';
@@ -16,7 +17,8 @@ export default function App() {
   const {
     layers, setLayers, selectedLayerIds, setSelectedLayerIds, handleLayerClick, activeLayerId, activeLayer,
     addLayer, addGroup, groupSelectedLayers, updateLayer, moveLayersToGroup, ungroup,
-    deleteLayer, duplicateLayer, moveLayerUp, moveLayerDown, handleImageUpload, handleWorkImageUpload
+    deleteLayer, duplicateLayer, moveLayerUp, moveLayerDown, handleImageUpload, handleWorkImageUpload,
+    convertToSmartObject
   } = useLayers();
   
   const {
@@ -62,7 +64,7 @@ export default function App() {
   const previewCanvasWidth = Math.round(canvasSizeCm * previewPxPerCm);
   const previewCanvasHeight = Math.round(canvasSizeCm * previewPxPerCm);
 
-  const renderPattern = useCallback((canvas: HTMLCanvasElement, targetDpi: number) => {
+  const renderPattern = useCallback((canvas: HTMLCanvasElement, targetDpi: number, excludeLayerId?: string) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
@@ -76,6 +78,7 @@ export default function App() {
     drawGuides(ctx, targetDpi, canvas.width, canvas.height, innerRadiusCm, outerRadiusCm, showFabricLimits, safeFabricWidth);
 
     const isLayerVisible = (layer: any): boolean => {
+      if (excludeLayerId && layer.id === excludeLayerId) return false;
       if (!layer.visible) return false;
       let current = layer;
       while (current.parentId) {
@@ -100,6 +103,9 @@ export default function App() {
   });
 
   const { autoIntegrate } = useAutoIntegration({ layers, updateLayer, renderPattern });
+
+  const [smartObjectEditorOpen, setSmartObjectEditorOpen] = React.useState(false);
+  const [smartObjectLayers, setSmartObjectLayers] = React.useState<any[]>([]);
 
   const MINI_DPI = 5;
   const miniCanvasSize = Math.round(canvasSizeCm * (MINI_DPI / 2.54));
@@ -153,6 +159,11 @@ export default function App() {
         isExportingPsd={isExportingPsd}
         exportForPhotoshop={exportForPhotoshop}
         autoIntegrate={autoIntegrate}
+        openSmartObjectEditor={(ids) => {
+            const selected = layers.filter(l => ids.includes(l.id));
+            setSmartObjectLayers(selected);
+            setSmartObjectEditorOpen(true);
+        }}
       />
 
       <CanvasArea
@@ -207,6 +218,17 @@ export default function App() {
           layer={removeBgLayer}
           onConfirm={confirmRemoveBg}
           onClose={() => setRemoveBgLayerId(null)}
+        />
+      )}
+
+      {smartObjectEditorOpen && (
+        <CompositionModal
+          initialLayers={smartObjectLayers}
+          onClose={() => setSmartObjectEditorOpen(false)}
+          onConfirm={(src, img) => {
+            convertToSmartObject(smartObjectLayers.map(l => l.id), src, img);
+            setSmartObjectEditorOpen(false);
+          }}
         />
       )}
     </div>

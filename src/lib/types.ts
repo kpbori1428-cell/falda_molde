@@ -33,6 +33,7 @@ export interface PatternLayer {
   manualScale: number;
   manualRotation: number;
   locked: boolean;
+  isSmartObject: boolean;
 }
 
 export const createDefaultLayer = (index: number): PatternLayer => ({
@@ -67,6 +68,7 @@ export const createDefaultLayer = (index: number): PatternLayer => ({
   manualScale: 1,
   manualRotation: 0,
   locked: false,
+  isSmartObject: false,
 });
 
 export const createDefaultGroup = (index: number): PatternLayer => ({
@@ -101,4 +103,5 @@ export const createDefaultGroup = (index: number): PatternLayer => ({
   manualScale: 1,
   manualRotation: 0,
   locked: false,
+  isSmartObject: false,
 });

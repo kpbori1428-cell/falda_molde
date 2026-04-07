@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet, ChevronDown, ChevronRight, FolderPlus, Group, ArrowLeft, ArrowRight, Lock, Unlock, Zap } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet, ChevronDown, ChevronRight, FolderPlus, Group, ArrowLeft, ArrowRight, Lock, Unlock, Zap, Maximize } from 'lucide-react';
 import { PatternLayer, PlacementType } from '../lib/types';
 import { CollapsibleSection, ControlInput } from './UI';
 
@@ -41,6 +41,7 @@ interface SidebarProps {
   isExportingPsd: boolean;
   exportForPhotoshop: () => void;
   autoIntegrate: (layerId: string) => void;
+  openSmartObjectEditor: (layerIds: string[]) => void;
 }
 
 export default function Sidebar({
@@ -48,7 +49,7 @@ export default function Sidebar({
   showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer, addGroup, groupSelectedLayers,
   selectedLayerIds, handleLayerClick, activeLayerId, updateLayer, moveLayerUp, moveLayerDown, moveLayersToGroup, ungroup, duplicateLayer, deleteLayer,
   activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
-  isDownloading, isExportingPsd, exportForPhotoshop, autoIntegrate
+  isDownloading, isExportingPsd, exportForPhotoshop, autoIntegrate, openSmartObjectEditor
 }: SidebarProps) {
   const getLayerDepth = (layer: PatternLayer): number => {
     let depth = 0;
@@ -136,6 +137,14 @@ export default function Sidebar({
                 title="Agrupar Selección"
               >
                 <Group size={10} /> Agrupar
+              </button>
+              <button
+                onClick={() => openSmartObjectEditor(selectedLayerIds)}
+                disabled={selectedLayerIds.length === 0}
+                className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-500 disabled:opacity-30"
+                title="Crear Objeto Inteligente"
+              >
+                <Maximize size={10} /> Smart
               </button>
               <label className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-sm">
                 <ImagePlus size={10} /> Trabajo
