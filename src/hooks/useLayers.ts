@@ -292,6 +292,7 @@ export function useLayers() {
               name: el.name,
               imageSrc: el.src,
               imageObj: el.img,
+              imageWidthCm: 30, // Larger default for work layers
               placementType: 'manual'
             }));
             setLayers([...layers, ...newWorkLayers]);
@@ -333,6 +334,7 @@ export function useLayers() {
                 name: file.name.replace('.psd', ''),
                 imageSrc: src,
                 imageObj: img,
+                imageWidthCm: 30, // Larger default for work layers
                 placementType: 'manual'
               };
               setLayers([...layers, newWorkLayer]);
@@ -361,6 +363,7 @@ export function useLayers() {
               name: file.name.split('.')[0],
               imageSrc: src,
               imageObj: img,
+              imageWidthCm: 30, // Larger default for work layers
               placementType: 'manual'
             };
             setLayers([...layers, newWorkLayer]);

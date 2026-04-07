@@ -356,7 +356,7 @@ export default function CompositionModal({
                                             <ControlInput label="Pos Y" value={activeLayer.posY} setValue={(v:number) => updateLayer(activeLayer.id, { posY: v })} min={-100} max={100} unit="cm" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-1">
-                                            <ControlInput label="Escala" value={activeLayer.manualScale} setValue={(v:number) => updateLayer(activeLayer.id, { manualScale: v })} min={0.01} max={10} step={0.01} unit="x" />
+                                        <ControlInput label="Escala" value={activeLayer.manualScale} setValue={(v:number) => updateLayer(activeLayer.id, { manualScale: v })} min={0.01} max={20} step={0.01} unit="x" />
                                             <ControlInput label="Rotar" value={activeLayer.manualRotation} setValue={(v:number) => updateLayer(activeLayer.id, { manualRotation: v })} min={-360} max={360} unit="°" />
                                         </div>
                                     </>
@@ -379,10 +379,10 @@ export default function CompositionModal({
                             </div>
                         </CollapsibleSection>
 
-                        <CollapsibleSection title="Transformación" icon={<Move size={10}/>} defaultOpen={false}>
+                    <CollapsibleSection title="Transformación" icon={<Move size={10}/>} defaultOpen={true}>
                             <div className="flex flex-col gap-2 mt-1">
                                 <ControlInput label="Opacidad" value={activeLayer.opacity} setValue={(v:number) => updateLayer(activeLayer.id, { opacity: v })} min={0} max={100} unit="%" />
-                                <ControlInput label="Ancho" value={activeLayer.imageWidthCm} setValue={(v:number) => updateLayer(activeLayer.id, { imageWidthCm: v })} min={1} max={50} unit="cm" />
+                            <ControlInput label="Ancho" value={activeLayer.imageWidthCm} setValue={(v:number) => updateLayer(activeLayer.id, { imageWidthCm: v })} min={1} max={200} unit="cm" />
                                 <ControlInput label="Rotación Global" value={activeLayer.rotationOffset} setValue={(v:number) => updateLayer(activeLayer.id, { rotationOffset: v })} min={0} max={360} unit="°" />
                             </div>
                         </CollapsibleSection>

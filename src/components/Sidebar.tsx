@@ -364,12 +364,8 @@ export default function Sidebar({
                 {activeLayer.placementType === 'manual' && (
                   <div className="flex flex-col gap-3 pt-3 border-t border-neutral-800/50">
                     <div className="grid grid-cols-2 gap-3">
-                      <ControlInput label="Posición X" value={activeLayer.posX} setValue={(v: number) => updateLayer(activeLayer.id, { posX: v })} min={-200} max={200} unit="cm" />
-                      <ControlInput label="Posición Y" value={activeLayer.posY} setValue={(v: number) => updateLayer(activeLayer.id, { posY: v })} min={-200} max={200} unit="cm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <ControlInput label="Escala Manual" value={activeLayer.manualScale} setValue={(v: number) => updateLayer(activeLayer.id, { manualScale: v })} min={0.01} max={10} step={0.01} unit="x" />
-                      <ControlInput label="Rotación Manual" value={activeLayer.manualRotation} setValue={(v: number) => updateLayer(activeLayer.id, { manualRotation: v })} min={-360} max={360} unit="°" />
+                      <ControlInput label="Posición X" value={activeLayer.posX} setValue={(v: number) => updateLayer(activeLayer.id, { posX: v })} min={-300} max={300} unit="cm" />
+                      <ControlInput label="Posición Y" value={activeLayer.posY} setValue={(v: number) => updateLayer(activeLayer.id, { posY: v })} min={-300} max={300} unit="cm" />
                     </div>
                   </div>
                 )}
@@ -473,10 +469,18 @@ export default function Sidebar({
             </CollapsibleSection>
 
             {/* Transform Section */}
-            <CollapsibleSection title="Transformación de Figura" icon={<Move size={14} />} defaultOpen={false} accentColor="text-blue-400">
+            <CollapsibleSection title="Transformación de Figura" icon={<Move size={14} />} defaultOpen={true} accentColor="text-blue-400">
               <div className="flex flex-col gap-3 bg-neutral-950/50 p-4 rounded-xl border border-neutral-800">
                 <ControlInput label="Opacidad" value={activeLayer.opacity} setValue={(v: number) => updateLayer(activeLayer.id, { opacity: v })} min={0} max={100} unit="%" accentColor="accent-blue-400" />
-                <ControlInput label="Ancho de la figura" value={activeLayer.imageWidthCm} setValue={(v: number) => updateLayer(activeLayer.id, { imageWidthCm: v })} min={1} max={50} step={0.5} unit="cm" />
+                <ControlInput label="Ancho de la figura" value={activeLayer.imageWidthCm} setValue={(v: number) => updateLayer(activeLayer.id, { imageWidthCm: v })} min={1} max={200} step={0.5} unit="cm" />
+
+                {activeLayer.placementType === 'manual' && (
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/50">
+                    <ControlInput label="Escala Manual" value={activeLayer.manualScale} setValue={(v: number) => updateLayer(activeLayer.id, { manualScale: v })} min={0.01} max={20} step={0.01} unit="x" />
+                    <ControlInput label="Rotación Manual" value={activeLayer.manualRotation} setValue={(v: number) => updateLayer(activeLayer.id, { manualRotation: v })} min={-360} max={360} unit="°" />
+                  </div>
+                )}
+
                 <ControlInput label="Rotación Global" value={activeLayer.rotationOffset} setValue={(v: number) => updateLayer(activeLayer.id, { rotationOffset: v })} min={0} max={360} unit="°" />
                 <ControlInput label="Desfase Angular (Inicio)" value={activeLayer.angularOffset} setValue={(v: number) => updateLayer(activeLayer.id, { angularOffset: v })} min={0} max={360} unit="°" />
 
