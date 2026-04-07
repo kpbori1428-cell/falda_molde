@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { PatternLayer } from '../lib/types';
-import { analyzeBackground, adjustBlackPoint, applyLightWrap } from '../lib/imageProcessing';
+import { analyzeBackground, adjustBlackPoint, applyLightWrap, applyBlur, applyGrain } from '../lib/imageProcessing';
 
 interface IntegrationParams {
   layers: PatternLayer[];
@@ -85,6 +85,16 @@ export function useAutoIntegration({ layers, updateLayer, renderPattern }: Integ
 
     adjustBlackPoint(layerImageData, stats.minLuminance);
     applyLightWrap(layerImageData, stats.avgColor, 0.4, 5);
+
+    // Match Sharpness (if background is blurry, blur the flower)
+    if (stats.sharpness < 0.6) {
+        applyBlur(layerImageData, 0.6 - stats.sharpness);
+    }
+
+    // Match Noise (add grain if background is noisy)
+    if (stats.noiseIntensity > 0.02) {
+        applyGrain(layerImageData, stats.noiseIntensity);
+    }
 
     layerCtx.putImageData(layerImageData, 0, 0);
     const newSrc = layerCanvas.toDataURL('image/png');
