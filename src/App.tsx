@@ -4,6 +4,7 @@ import CanvasArea from './components/CanvasArea';
 import SegmentationModal from './components/SegmentationModal';
 import RemoveBgModal from './components/RemoveBgModal';
 import CompositionModal from './components/CompositionModal';
+import LassoModal from './components/LassoModal';
 import { useLayers } from './hooks/useLayers';
 import { useViewport } from './hooks/useViewport';
 import { useImageEditor } from './hooks/useImageEditor';
@@ -50,7 +51,8 @@ export default function App() {
   const {
     segmentLayer, segmentSelections, startSegmenting, handleSegmentClick,
     confirmSegmentation, setSegmentLayerId, setSegmentSelections,
-    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId
+    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId,
+    lassoLayer, startLasso, confirmLasso, setLassoLayerId
   } = useImageEditor(layers, setLayers);
 
   const {
@@ -150,6 +152,7 @@ export default function App() {
         handleWorkImageUpload={handleWorkImageUpload}
         startSegmenting={startSegmenting}
         startRemovingBg={startRemovingBg}
+        startLasso={startLasso}
         bgColor={bgColor}
         setBgColor={setBgColor}
         dpi={dpi}
@@ -225,10 +228,18 @@ export default function App() {
         <CompositionModal
           initialLayers={smartObjectLayers}
           onClose={() => setSmartObjectEditorOpen(false)}
-          onConfirm={(src, img) => {
-            convertToSmartObject(smartObjectLayers.map(l => l.id), src, img);
+          onConfirm={(src, img, subLayers) => {
+            convertToSmartObject(smartObjectLayers.map(l => l.id), src, img, subLayers);
             setSmartObjectEditorOpen(false);
           }}
+        />
+      )}
+
+      {lassoLayer && (
+        <LassoModal
+          layer={lassoLayer}
+          onConfirm={confirmLasso}
+          onClose={() => setLassoLayerId(null)}
         />
       )}
     </div>

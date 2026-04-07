@@ -32,6 +32,7 @@ interface SidebarProps {
   handleWorkImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   startSegmenting: (layerId: string) => void;
   startRemovingBg: (layerId: string) => void;
+  startLasso: (layerId: string) => void;
   bgColor: string;
   setBgColor: (color: string) => void;
   dpi: number | '';
@@ -48,7 +49,7 @@ export default function Sidebar({
   waistCircumferenceCm, setWaistCircumferenceCm, skirtLengthCm, setSkirtLengthCm, hemCircumferenceCm,
   showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer, addGroup, groupSelectedLayers,
   selectedLayerIds, handleLayerClick, activeLayerId, updateLayer, moveLayerUp, moveLayerDown, moveLayersToGroup, ungroup, duplicateLayer, deleteLayer,
-  activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
+  activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, startLasso, bgColor, setBgColor, dpi, setDpi, downloadImage,
   isDownloading, isExportingPsd, exportForPhotoshop, autoIntegrate, openSmartObjectEditor
 }: SidebarProps) {
   const getLayerDepth = (layer: PatternLayer): number => {
@@ -141,10 +142,10 @@ export default function Sidebar({
               <button
                 onClick={() => openSmartObjectEditor(selectedLayerIds)}
                 disabled={selectedLayerIds.length === 0}
-                className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-500 disabled:opacity-30"
+                className={`text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-all border shadow-lg ${selectedLayerIds.length > 1 ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 scale-105' : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700 opacity-50'}`}
                 title="Crear Objeto Inteligente"
               >
-                <Maximize size={10} /> Smart
+                <Maximize size={10} /> Smart Object
               </button>
               <label className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-sm">
                 <ImagePlus size={10} /> Trabajo
@@ -326,6 +327,13 @@ export default function Sidebar({
                     <Droplet className="w-3.5 h-3.5" />
                     Quitar Fondo
                   </button>
+                  <button
+                    onClick={() => startLasso(activeLayer.id)}
+                    className="w-full py-2 px-3 bg-neutral-950 text-neutral-300 hover:text-white hover:bg-neutral-800 border border-neutral-700 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    Recorte Manual
+                  </button>
                 </div>
                 <div className="mt-2">
                   <button
@@ -487,6 +495,13 @@ export default function Sidebar({
                       <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <span className="text-xs font-medium text-neutral-300 group-hover:text-white transition-colors">Invertir verticalmente</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center w-4 h-4">
+                      <input type="checkbox" checked={activeLayer.flipHorizontal} onChange={(e) => updateLayer(activeLayer.id, { flipHorizontal: e.target.checked })} className="peer appearance-none w-4 h-4 border border-neutral-600 rounded bg-neutral-900 checked:bg-blue-500 checked:border-blue-500 transition-colors" />
+                      <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <span className="text-xs font-medium text-neutral-300 group-hover:text-white transition-colors">Invertir horizontalmente</span>
                   </label>
                 </div>
               </div>

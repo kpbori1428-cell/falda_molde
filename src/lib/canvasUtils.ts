@@ -89,6 +89,7 @@ export const drawSingleLayer = (
 
   const imageWidthPx = safeImageWidth * currentPxPerCm;
   const scale = imageWidthPx / imgW;
+  const scaleX = scale * (layer.flipHorizontal ? -1 : 1);
   const scaleY = scale * (layer.flipVertical ? -1 : 1);
   const spacingPx = safeSpacing * currentPxPerCm;
   const offsetPx = safeOffset * currentPxPerCm;
@@ -105,7 +106,7 @@ export const drawSingleLayer = (
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(manualRot * Math.PI / 180);
-    ctx.scale(scale * manualScale, scaleY * manualScale);
+    ctx.scale(scaleX * manualScale, scaleY * manualScale);
     ctx.drawImage(layer.imageObj, -imgW / 2, -imgH / 2);
     ctx.restore();
   } else if (layer.placementType === 'radial') {
@@ -124,7 +125,7 @@ export const drawSingleLayer = (
 
         const isAlternate = r % 2 !== 0; // Alternate by ray
         const currentRot = safeRotOffset + (isAlternate ? safeAltRot : 0);
-        const currentScaleX = scale * (layer.mirrorAlternate && isAlternate ? -1 : 1);
+        const currentScaleX = scaleX * (layer.mirrorAlternate && isAlternate ? -1 : 1);
 
         ctx.save();
         ctx.translate(x, y);
@@ -186,7 +187,7 @@ export const drawSingleLayer = (
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(sliceAngle + Math.PI / 2 + currentRot);
-          if (layer.flipVertical) ctx.scale(1, -1);
+          ctx.scale(layer.flipHorizontal ? -1 : 1, layer.flipVertical ? -1 : 1);
           ctx.drawImage(
             layer.imageObj,
             sx, 0, actualSliceWidth, imgH,
@@ -236,7 +237,7 @@ export const drawSingleLayer = (
 
         const isAlternate = i % 2 !== 0;
         const currentRot = safeRotOffset + (isAlternate ? safeAltRot : 0);
-        const currentScaleX = scale * (layer.mirrorAlternate && isAlternate ? -1 : 1);
+        const currentScaleX = scaleX * (layer.mirrorAlternate && isAlternate ? -1 : 1);
 
         ctx.save();
         ctx.translate(x, y);

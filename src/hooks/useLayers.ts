@@ -377,7 +377,7 @@ export function useLayers() {
     e.target.value = '';
   };
 
-  const convertToSmartObject = (ids: string[], mergedSrc: string, mergedImg: HTMLImageElement) => {
+  const convertToSmartObject = (ids: string[], mergedSrc: string, mergedImg: HTMLImageElement, subLayers: PatternLayer[]) => {
     if (ids.length === 0) return;
 
     const newSmartLayer: PatternLayer = {
@@ -387,6 +387,7 @@ export function useLayers() {
       imageSrc: mergedSrc,
       imageObj: mergedImg,
       isSmartObject: true,
+      subLayers,
       placementType: 'manual',
       posX: 0,
       posY: 0,

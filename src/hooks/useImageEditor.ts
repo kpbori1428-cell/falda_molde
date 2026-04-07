@@ -143,6 +143,71 @@ export function useImageEditor(layers: PatternLayer[], setLayers: (layers: Patte
     setRemoveBgLayerId(null);
   };
 
+  // --- Lasso Extraction State & Logic ---
+  const [lassoLayerId, setLassoLayerId] = useState<string | null>(null);
+  const [lassoPoints, setLassoPoints] = useState<{ x: number, y: number }[]>([]);
+  const lassoLayer = lassoLayerId ? layers.find(l => l.id === lassoLayerId) : null;
+
+  const startLasso = (layerId: string) => {
+    setLassoLayerId(layerId);
+    setLassoPoints([]);
+  };
+
+  const confirmLasso = async (points: { x: number, y: number }[]) => {
+    if (!lassoLayer?.imageObj || points.length < 3) return;
+
+    const img = lassoLayer.imageObj;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d')!;
+
+    // Draw the mask
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.closePath();
+    ctx.clip();
+
+    ctx.drawImage(img, 0, 0);
+
+    // Crop to bounding box
+    let minX = img.width, minY = img.height, maxX = 0, maxY = 0;
+    points.forEach(p => {
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+    });
+
+    const cropW = maxX - minX;
+    const cropH = maxY - minY;
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = cropW;
+    finalCanvas.height = cropH;
+    const finalCtx = finalCanvas.getContext('2d')!;
+    finalCtx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+    const src = finalCanvas.toDataURL('image/png');
+    const newImg = new Image();
+    await new Promise(resolve => {
+      newImg.onload = resolve;
+      newImg.src = src;
+    });
+
+    const newLayer: PatternLayer = {
+      ...lassoLayer,
+      id: `lasso-${Date.now()}`,
+      name: `${lassoLayer.name} (Recorte)`,
+      imageSrc: src,
+      imageObj: newImg,
+      placementType: 'manual'
+    };
+
+    setLayers([...layers, newLayer]);
+    setLassoLayerId(null);
+  };
 
   return {
     segmentLayer,
@@ -156,6 +221,13 @@ export function useImageEditor(layers: PatternLayer[], setLayers: (layers: Patte
     removeBgLayer,
     startRemovingBg,
     confirmRemoveBg,
-    setRemoveBgLayerId
+    setRemoveBgLayerId,
+
+    lassoLayer,
+    lassoPoints,
+    setLassoPoints,
+    startLasso,
+    confirmLasso,
+    setLassoLayerId
   };
 }

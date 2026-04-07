@@ -27,6 +27,7 @@ export interface PatternLayer {
   angularOffset: number | '';
   raysCount: number | '';
   flipVertical: boolean;
+  flipHorizontal: boolean;
   // Manual transformation properties
   posX: number;
   posY: number;
@@ -34,6 +35,7 @@ export interface PatternLayer {
   manualRotation: number;
   locked: boolean;
   isSmartObject: boolean;
+  subLayers?: PatternLayer[];
 }
 
 export const createDefaultLayer = (index: number): PatternLayer => ({
@@ -63,6 +65,7 @@ export const createDefaultLayer = (index: number): PatternLayer => ({
   angularOffset: 0,
   raysCount: 8,
   flipVertical: false,
+  flipHorizontal: false,
   posX: 0,
   posY: 0,
   manualScale: 1,
@@ -98,6 +101,7 @@ export const createDefaultGroup = (index: number): PatternLayer => ({
   angularOffset: 0,
   raysCount: 8,
   flipVertical: false,
+  flipHorizontal: false,
   posX: 0,
   posY: 0,
   manualScale: 1,
