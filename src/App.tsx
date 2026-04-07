@@ -9,6 +9,7 @@ import { useImageEditor } from './hooks/useImageEditor';
 import { useSkirtSettings } from './hooks/useSkirtSettings';
 import { useExporter } from './hooks/useExporter';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
+import { useAutoIntegration } from './hooks/useAutoIntegration';
 import { drawGuides, drawSingleLayer } from './lib/canvasUtils';
 
 export default function App() {
@@ -98,6 +99,8 @@ export default function App() {
     dpi, canvasSizeCm, bgColor, layers, renderPattern, innerRadiusCm, outerRadiusCm, showFabricLimits, safeFabricWidth
   });
 
+  const { autoIntegrate } = useAutoIntegration({ layers, updateLayer, renderPattern });
+
   const MINI_DPI = 5;
   const miniCanvasSize = Math.round(canvasSizeCm * (MINI_DPI / 2.54));
 
@@ -149,6 +152,7 @@ export default function App() {
         isDownloading={isDownloading}
         isExportingPsd={isExportingPsd}
         exportForPhotoshop={exportForPhotoshop}
+        autoIntegrate={autoIntegrate}
       />
 
       <CanvasArea

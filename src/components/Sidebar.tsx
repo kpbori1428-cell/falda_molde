@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet, ChevronDown, ChevronRight, FolderPlus, Group, ArrowLeft, ArrowRight, Lock, Unlock } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Layers, Settings, Image as ImageIcon, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, FileImage, Scissors, Move, ImagePlus, Copy, Droplet, ChevronDown, ChevronRight, FolderPlus, Group, ArrowLeft, ArrowRight, Lock, Unlock, Zap } from 'lucide-react';
 import { PatternLayer, PlacementType } from '../lib/types';
 import { CollapsibleSection, ControlInput } from './UI';
 
@@ -40,6 +40,7 @@ interface SidebarProps {
   isDownloading: boolean;
   isExportingPsd: boolean;
   exportForPhotoshop: () => void;
+  autoIntegrate: (layerId: string) => void;
 }
 
 export default function Sidebar({
@@ -47,7 +48,7 @@ export default function Sidebar({
   showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer, addGroup, groupSelectedLayers,
   selectedLayerIds, handleLayerClick, activeLayerId, updateLayer, moveLayerUp, moveLayerDown, moveLayersToGroup, ungroup, duplicateLayer, deleteLayer,
   activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
-  isDownloading, isExportingPsd, exportForPhotoshop
+  isDownloading, isExportingPsd, exportForPhotoshop, autoIntegrate
 }: SidebarProps) {
   const getLayerDepth = (layer: PatternLayer): number => {
     let depth = 0;
@@ -316,6 +317,18 @@ export default function Sidebar({
                     <Droplet className="w-3.5 h-3.5" />
                     Quitar Fondo
                   </button>
+                </div>
+                <div className="mt-2">
+                  <button
+                    onClick={() => autoIntegrate(activeLayer.id)}
+                    className="w-full py-2 px-3 bg-blue-600/20 text-blue-300 hover:text-white hover:bg-blue-600 border border-blue-500/30 hover:border-blue-500 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all group"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-blue-400 group-hover:text-white" />
+                    Integración Automática (Pro)
+                  </button>
+                  <p className="text-[9px] text-neutral-500 mt-1.5 px-1 leading-tight">
+                    Muestrea el fondo, ajusta el punto negro y aplica sangrado de bordes (Light Wrap).
+                  </p>
                 </div>
               </CollapsibleSection>
             )}
