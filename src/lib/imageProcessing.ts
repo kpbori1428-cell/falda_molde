@@ -103,51 +103,86 @@ export function applyGrain(imageData: ImageData, intensity: number) {
 }
 
 /**
- * Simplified blur (box blur) for sharpness matching
+ * Professional-grade blur (Triangle/Linear Filter) for sharpness matching.
+ * Replaces crude box blur with a smooth two-pass filter to maintain high quality.
  */
 export function applyBlur(imageData: ImageData, amount: number) {
   if (amount <= 0) return;
   const { width, height, data } = imageData;
+  const radius = Math.max(1, Math.floor(amount * 3));
   const originalData = new Uint8ClampedArray(data);
-  const size = Math.floor(amount * 5); // scale blur radius
 
+  // 1. Horizontal Pass
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      if (originalData[idx + 3] === 0) continue;
+      const i = (y * width + x) * 4;
+      if (originalData[i + 3] === 0) continue;
 
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let dy = -size; dy <= size; dy++) {
-        for (let dx = -size; dx <= size; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            const nIdx = (ny * width + nx) * 4;
-            if (originalData[nIdx + 3] > 0) {
-                r += originalData[nIdx];
-                g += originalData[nIdx + 1];
-                b += originalData[nIdx + 2];
-                count++;
-            }
+      let r = 0, g = 0, b = 0, weight = 0;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = x + dx;
+        if (nx >= 0 && nx < width) {
+          const ni = (y * width + nx) * 4;
+          const alpha = originalData[ni + 3];
+          if (alpha > 0) {
+            const w = (1 - Math.abs(dx) / (radius + 1)) * (alpha / 255);
+            r += originalData[ni] * w;
+            g += originalData[ni + 1] * w;
+            b += originalData[ni + 2] * w;
+            weight += w;
           }
         }
       }
-      if (count > 0) {
-        data[idx] = r / count;
-        data[idx + 1] = g / count;
-        data[idx + 2] = b / count;
+      if (weight > 0) {
+        data[i] = r / weight;
+        data[i + 1] = g / weight;
+        data[i + 2] = b / weight;
+      }
+    }
+  }
+
+  // Use current results for the vertical pass
+  const intermediateData = new Uint8ClampedArray(data);
+
+  // 2. Vertical Pass
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      if (intermediateData[i + 3] === 0) continue;
+
+      let r = 0, g = 0, b = 0, weight = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const ny = y + dy;
+        if (ny >= 0 && ny < height) {
+          const ni = (ny * width + x) * 4;
+          const alpha = intermediateData[ni + 3];
+          if (alpha > 0) {
+            const w = (1 - Math.abs(dy) / (radius + 1)) * (alpha / 255);
+            r += intermediateData[ni] * w;
+            g += intermediateData[ni + 1] * w;
+            b += intermediateData[ni + 2] * w;
+            weight += w;
+          }
+        }
+      }
+      if (weight > 0) {
+        data[i] = r / weight;
+        data[i + 1] = g / weight;
+        data[i + 2] = b / weight;
       }
     }
   }
 }
 
 /**
- * Applies a light wrap effect (edge bleed)
+ * Applies a high-fidelity light wrap effect (edge bleed).
+ * Uses a smoother falloff to avoid pixelation on high-res layers.
  */
 export function applyLightWrap(
   layerData: ImageData,
   avgColor: { r: number; g: number; b: number },
   intensity: number = 0.3,
-  radius: number = 3
+  radius: number = 5
 ) {
   const { width, height, data } = layerData;
   const originalData = new Uint8ClampedArray(data);
@@ -158,19 +193,27 @@ export function applyLightWrap(
       const alpha = originalData[idx + 3];
       if (alpha === 0) continue;
 
-      // Distance to edge (approximate)
+      // Improved distance-to-edge detection
       let minDist = radius;
+      let foundEdge = false;
+
+      // Optimization: only check neighborhood if alpha is likely to be near edge
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
           const nx = x + dx, ny = y + dy;
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height || originalData[(ny * width + nx) * 4 + 3] < 128) {
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height || originalData[(ny * width + nx) * 4 + 3] < 200) {
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < minDist) minDist = dist;
+            if (dist < minDist) {
+                minDist = dist;
+                foundEdge = true;
+            }
           }
         }
       }
 
-      const factor = (1 - minDist / radius) * intensity;
+      if (!foundEdge && alpha > 250) continue;
+
+      const factor = Math.pow(1 - minDist / radius, 2) * intensity; // Quadratic falloff for realism
       if (factor > 0) {
         data[idx] = originalData[idx] * (1 - factor) + avgColor.r * factor;
         data[idx + 1] = originalData[idx + 1] * (1 - factor) + avgColor.g * factor;

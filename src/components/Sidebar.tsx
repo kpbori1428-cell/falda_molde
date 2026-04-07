@@ -32,7 +32,6 @@ interface SidebarProps {
   handleWorkImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   startSegmenting: (layerId: string) => void;
   startRemovingBg: (layerId: string) => void;
-  autoCutout: (layerId: string) => void;
   bgColor: string;
   setBgColor: (color: string) => void;
   dpi: number | '';
@@ -49,7 +48,7 @@ export default function Sidebar({
   waistCircumferenceCm, setWaistCircumferenceCm, skirtLengthCm, setSkirtLengthCm, hemCircumferenceCm,
   showFabricLimits, setShowFabricLimits, fabricWidthCm, setFabricWidthCm, layers, addLayer, addGroup, groupSelectedLayers,
   selectedLayerIds, handleLayerClick, activeLayerId, updateLayer, moveLayerUp, moveLayerDown, moveLayersToGroup, ungroup, duplicateLayer, deleteLayer,
-  activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, autoCutout, bgColor, setBgColor, dpi, setDpi, downloadImage,
+  activeLayer, handleImageUpload, handleWorkImageUpload, startSegmenting, startRemovingBg, bgColor, setBgColor, dpi, setDpi, downloadImage,
   isDownloading, isExportingPsd, exportForPhotoshop, autoIntegrate, openSmartObjectEditor
 }: SidebarProps) {
   const getLayerDepth = (layer: PatternLayer): number => {
@@ -326,13 +325,6 @@ export default function Sidebar({
                   >
                     <Droplet className="w-3.5 h-3.5" />
                     Quitar Fondo
-                  </button>
-                  <button
-                    onClick={() => autoCutout(activeLayer.id)}
-                    className="w-full py-2 px-3 bg-neutral-950 text-neutral-300 hover:text-white hover:bg-neutral-800 border border-neutral-700 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Scissors className="w-3.5 h-3.5" />
-                    Recorte Auto
                   </button>
                 </div>
                 <div className="mt-2">

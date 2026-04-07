@@ -29,7 +29,7 @@ export default function App() {
   } = useViewport();
 
   // Preview resolution
-  const PREVIEW_DPI = 40;
+  const PREVIEW_DPI = 96;
 
   const {
     handleCanvasPointerDown,
@@ -50,8 +50,7 @@ export default function App() {
   const {
     segmentLayer, segmentSelections, startSegmenting, handleSegmentClick,
     confirmSegmentation, setSegmentLayerId, setSegmentSelections,
-    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId,
-    autoCutout
+    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId
   } = useImageEditor(layers, setLayers);
 
   const {
@@ -151,7 +150,6 @@ export default function App() {
         handleWorkImageUpload={handleWorkImageUpload}
         startSegmenting={startSegmenting}
         startRemovingBg={startRemovingBg}
-        autoCutout={autoCutout}
         bgColor={bgColor}
         setBgColor={setBgColor}
         dpi={dpi}

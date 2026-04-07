@@ -34,8 +34,7 @@ export default function CompositionModal({
   const {
     segmentLayer, segmentSelections, startSegmenting, handleSegmentClick,
     confirmSegmentation, setSegmentLayerId, setSegmentSelections,
-    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId,
-    autoCutout
+    removeBgLayer, startRemovingBg, confirmRemoveBg, setRemoveBgLayerId
   } = useImageEditor(layers, setLayers);
 
   const { autoIntegrate } = useAutoIntegration({
@@ -187,22 +186,77 @@ export default function CompositionModal({
   };
 
   const handleFinalConfirm = () => {
+    // 1. Calculate bounding box of all layers to determine optimal canvas size
+    // We use a high reference DPI (300) for the internal flattening
+    const TARGET_DPI = 300;
+    const pxPerCm = TARGET_DPI / 2.54;
+
+    let minX = -10, minY = -10, maxX = 10, maxY = 10; // Default small area
+
+    layers.forEach(l => {
+        if (!l.visible || !l.imageObj) return;
+        const w = Number(l.imageWidthCm) || 8;
+        const h = (l.imageObj.height / l.imageObj.width) * w;
+
+        // Very rough estimate of extent based on placement
+        // For 'manual', it's easy. For others, they might spread around radii.
+        if (l.placementType === 'manual') {
+            minX = Math.min(minX, l.posX - w/2);
+            maxX = Math.max(maxX, l.posX + w/2);
+            minY = Math.min(minY, l.posY - h/2);
+            maxY = Math.max(maxY, l.posY + h/2);
+        } else {
+            // Patterns can span large areas, use a safe default or calculate based on rings/offset
+            const offset = Number(l.offsetCm) || 0;
+            const rings = Number(l.rings) || 1;
+            const ringSpacing = Number(l.ringSpacingCm) || 5;
+            const maxRadius = 40 + offset + (rings * ringSpacing); // 40 is dummy outer radius
+            minX = Math.min(minX, -maxRadius);
+            maxX = Math.max(maxX, maxRadius);
+            minY = Math.min(minY, -maxRadius);
+            maxY = Math.max(maxY, maxRadius);
+        }
+    });
+
+    // Add padding
+    minX -= 2; minY -= 2; maxX += 2; maxY += 2;
+
+    const canvasW = Math.ceil((maxX - minX) * pxPerCm);
+    const canvasH = Math.ceil((maxY - minY) * pxPerCm);
+
+    // Limit size to avoid crashes but stay high-res (e.g. max 8k)
+    const finalW = Math.min(8192, canvasW);
+    const finalH = Math.min(8192, canvasH);
+
     const canvas = document.createElement('canvas');
-    const pxPerCm = 40; // Higher res for the final smart object
-    const dpi = pxPerCm * 2.54;
-    canvas.width = 1000;
-    canvas.height = 1000;
+    canvas.width = finalW;
+    canvas.height = finalH;
     const ctx = canvas.getContext('2d')!;
 
+    // We need to draw the layers offset so they fit in our calculated bounding box
+    // But drawSingleLayer expects center-based coordinates (cx, cy)
+    // So we translate the whole context so that the "center" (0,0 in project space)
+    // maps to the correct place in our cropped canvas.
+    const centerX = -minX * pxPerCm;
+    const centerY = -minY * pxPerCm;
+
+    // Use dummy radii that match what we used for estimation
     const innerRadiusCm = 20;
     const outerRadiusCm = 40;
 
-    // Draw everything to the final high-res canvas
+    // To use drawSingleLayer with offset, we temporarily wrap it
+    ctx.save();
+    // drawSingleLayer uses width/2 and height/2 as center.
+    // We want the project (0,0) to be at (centerX, centerY).
+    // So we need to translate such that width/2 + translation = centerX.
+    ctx.translate(centerX - finalW/2, centerY - finalH/2);
+
     for (let i = layers.length - 1; i >= 0; i--) {
         const layer = layers[i];
         if (!layer.visible || !layer.imageObj) continue;
-        drawSingleLayer(ctx, layer, dpi, canvas.width, canvas.height, innerRadiusCm, outerRadiusCm);
+        drawSingleLayer(ctx, layer, TARGET_DPI, finalW, finalH, innerRadiusCm, outerRadiusCm);
     }
+    ctx.restore();
 
     const src = canvas.toDataURL('image/png');
     const img = new Image();
@@ -279,7 +333,6 @@ export default function CompositionModal({
                             <div className="grid grid-cols-2 gap-1 mt-1">
                                 <button onClick={() => startSegmenting(activeLayer.id)} className="py-1 px-2 bg-neutral-800 hover:bg-neutral-700 text-white text-[9px] font-bold rounded flex items-center justify-center gap-1"><Scissors size={8} /> Segmentar</button>
                                 <button onClick={() => startRemovingBg(activeLayer.id)} className="py-1 px-2 bg-neutral-800 hover:bg-neutral-700 text-white text-[9px] font-bold rounded flex items-center justify-center gap-1"><Droplet size={8} /> Quitar Fondo</button>
-                                <button onClick={() => autoCutout(activeLayer.id)} className="py-1 px-2 bg-neutral-800 hover:bg-neutral-700 text-white text-[9px] font-bold rounded flex items-center justify-center gap-1"><Scissors size={8} /> Recorte Auto</button>
                                 <button onClick={() => duplicateLayer(activeLayer.id)} className="py-1 px-2 bg-neutral-800 hover:bg-neutral-700 text-white text-[9px] font-bold rounded flex items-center justify-center gap-1"><Copy size={8} /> Duplicar</button>
                             </div>
                             <button onClick={() => autoIntegrate(activeLayer.id)} className="w-full mt-1 py-1 px-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white text-[9px] font-bold rounded flex items-center justify-center gap-1 transition-colors"><Zap size={8} /> Integración Automática</button>
